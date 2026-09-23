@@ -47,9 +47,8 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# Persist WhatsApp sessions and JSON data across redeploys
+# Persist WhatsApp sessions and JSON data across redeploys via a Railway volume mount.
 RUN mkdir -p /app/storage
-VOLUME ["/app/storage"]
 
 EXPOSE 3000
 CMD ["npm", "start"]
