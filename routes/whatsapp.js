@@ -91,11 +91,27 @@ async function resetSession(userId) {
   }
 
   const sessionFolder = path.join(SESSIONS_DIR, `session-${userId}`);
-  if (fs.existsSync(sessionFolder)) {
-    fs.rmSync(sessionFolder, { recursive: true, force: true });
-  }
+  await safeRemoveSessionDir(sessionFolder);
 
   console.log(`[wa:${userId}] Session reset — will generate a fresh QR on next check.`);
+}
+
+async function safeRemoveSessionDir(folderPath, retries = 5, delayMs = 250) {
+  if (!fs.existsSync(folderPath)) return;
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      fs.rmSync(folderPath, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      const isTransientLock = err && (err.code === "EBUSY" || err.code === "EPERM");
+      if (!isTransientLock || attempt === retries) {
+        console.warn(`[wa] Could not remove session directory ${folderPath}:`, err.message);
+        throw err;
+      }
+      await sleep(delayMs * attempt);
+    }
+  }
 }
 
 function sleep(ms) {
@@ -174,4 +190,4 @@ async function startBulkSend(userId, inviteLink, messageTemplate) {
   return { started: true };
 }
 
-module.exports = { getOrCreateSession, getState, startBulkSend, resetSession };
+module.exports = { getOrCreateSession, getState, startBulkSend, resetSession, safeRemoveSessionDir };
