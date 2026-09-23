@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Send — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+<script src="authguard.js"></script>
+
+<div class="container">
+  <h1 class="page-title">Send invites</h1>
+  <p class="page-sub">Sends go out one at a time, 4 to 6 seconds apart. Don't shorten this further: it's what keeps the number from getting banned.</p>
+
+  <div class="banner" id="notReadyBanner" style="display:none"></div>
+
+  <div class="panel">
+    <div class="field">
+      <label for="inviteLink">Group invite link</label>
+      <input type="text" id="inviteLink" placeholder="https://chat.whatsapp.com/..." />
+    </div>
+    <div class="field">
+      <label for="message">Message (use {name} and {link})</label>
+      <textarea id="message">Hi {name}, join our group: {link}</textarea>
+    </div>
+    <button class="btn btn-primary" id="sendBtn" disabled>Start sending</button>
+    <p class="hint" id="sendHint"></p>
+  </div>
+</div>
+
+<script>
+const sendBtn = document.getElementById("sendBtn");
+const sendHint = document.getElementById("sendHint");
+const notReadyBanner = document.getElementById("notReadyBanner");
+
+let waReady = false;
+let hasContacts = false;
+
+function updateBanner() {
+  if (waReady && hasContacts) {
+    notReadyBanner.style.display = "none";
+    sendBtn.disabled = false;
+    return;
+  }
+  sendBtn.disabled = true;
+  const missing = [];
+  if (!waReady) missing.push('<a href="connect.html">connect WhatsApp</a>');
+  if (!hasContacts) missing.push('<a href="upload.html">upload a contact sheet</a>');
+  notReadyBanner.innerHTML = "Before sending, " + missing.join(" and ") + ".";
+  notReadyBanner.style.display = "block";
+}
+
+async function checkReady() {
+  const [qrRes, statusRes] = await Promise.all([fetch("/api/qr"), fetch("/api/status")]);
+  const qrData = await qrRes.json();
+  const statusData = await statusRes.json();
+  waReady = qrData.ready;
+  hasContacts = statusData.contacts.length > 0;
+  updateBanner();
+}
+
+sendBtn.addEventListener("click", async () => {
+  const inviteLink = document.getElementById("inviteLink").value.trim();
+  const message = document.getElementById("message").value;
+
+  if (!inviteLink) {
+    alert("Add the group invite link first.");
+    return;
+  }
+
+  sendBtn.disabled = true;
+  const res = await fetch("/api/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ inviteLink, message }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert("Error: " + data.error);
+    sendBtn.disabled = false;
+    return;
+  }
+
+  sendHint.innerHTML = `Sending to ${data.total} contact(s). Watch progress on <a href="status.html">Status</a>.`;
+});
+
+setInterval(checkReady, 3000);
+checkReady();
+</script>
+</body>
+</html>

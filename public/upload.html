@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upload — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+<script src="authguard.js"></script>
+
+<div class="container">
+  <h1 class="page-title">Upload contacts</h1>
+  <p class="page-sub">An Excel or CSV file with a name column and a phone/mobile/number column. Headers are matched automatically.</p>
+
+  <div class="panel">
+    <div class="row">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="flex:1" />
+      <button class="btn btn-primary" id="uploadBtn">Upload</button>
+    </div>
+    <p class="hint" id="uploadResult"></p>
+  </div>
+</div>
+
+<script>
+const uploadBtn = document.getElementById("uploadBtn");
+const uploadResult = document.getElementById("uploadResult");
+
+uploadBtn.addEventListener("click", async () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) {
+    uploadResult.textContent = "Choose a file first.";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  uploadResult.textContent = "Uploading…";
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  const data = await res.json();
+
+  if (!res.ok) {
+    uploadResult.textContent = "Error: " + data.error;
+    return;
+  }
+
+  uploadResult.innerHTML =
+    `${data.validCount} valid contact(s), ${data.invalidCount} skipped (bad or duplicate numbers). ` +
+    `Head to <a href="send.html">Send</a> when ready.`;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connect — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+<script src="authguard.js"></script>
+
+<div class="container">
+  <h1 class="page-title">Connect WhatsApp</h1>
+  <p class="page-sub">Link this app to a WhatsApp account. This only needs to be done once — the session is remembered until you log out from your phone.</p>
+
+  <div class="panel">
+    <div class="dot-status">
+      <span class="dot" id="connDot"></span>
+      <span id="qrStatus">Checking connection…</span>
+    </div>
+    <img id="qrImg" style="display:none" />
+    <p class="hint" id="connectedHint" style="display:none">You're connected. Head to <a href="upload.html">Upload</a> to add your contact list.</p>
+    <button class="btn btn-secondary" id="regenBtn" style="margin-top:14px">Regenerate QR</button>
+    <p class="hint">Use this if the QR expired, seems stuck, or you want to link a different WhatsApp account.</p>
+  </div>
+</div>
+
+<script>
+const connDot = document.getElementById("connDot");
+const qrStatus = document.getElementById("qrStatus");
+const qrImg = document.getElementById("qrImg");
+const connectedHint = document.getElementById("connectedHint");
+const regenBtn = document.getElementById("regenBtn");
+
+regenBtn.addEventListener("click", async () => {
+  regenBtn.disabled = true;
+  qrStatus.textContent = "Reinitializing…";
+  qrImg.style.display = "none";
+  connDot.classList.remove("on");
+  await fetch("/api/qr/regenerate", { method: "POST" });
+  setTimeout(() => { regenBtn.disabled = false; }, 3000);
+});
+
+async function pollQr() {
+  const res = await fetch("/api/qr");
+  const data = await res.json();
+
+  if (data.ready) {
+    connDot.classList.add("on");
+    qrStatus.textContent = "Connected";
+    qrImg.style.display = "none";
+    connectedHint.style.display = "block";
+  } else if (data.qr) {
+    connDot.classList.remove("on");
+    qrStatus.textContent = "Scan this QR from WhatsApp → Linked Devices";
+    qrImg.src = data.qr;
+    qrImg.style.display = "block";
+    connectedHint.style.display = "none";
+  } else {
+    connDot.classList.remove("on");
+    qrStatus.textContent = "Waiting for QR code…";
+    connectedHint.style.display = "none";
+  }
+}
+
+setInterval(pollQr, 3000);
+pollQr();
+</script>
+</body>
+</html>

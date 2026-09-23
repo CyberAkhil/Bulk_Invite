@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Status — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+<script src="authguard.js"></script>
+
+<div class="container">
+  <h1 class="page-title">Status</h1>
+  <p class="page-sub">Live send progress for the current contact list.</p>
+
+  <div class="panel">
+    <div class="status-line" id="statusSummary">No contacts uploaded yet</div>
+    <table id="statusTable">
+      <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Error</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const statusSummary = document.getElementById("statusSummary");
+const statusTableBody = document.querySelector("#statusTable tbody");
+
+function renderContacts(contacts) {
+  statusTableBody.innerHTML = "";
+  contacts.forEach((c) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${c.name}</td>
+      <td class="mono">${c.phone}</td>
+      <td>
+        <span class="status-cell">
+          <span class="dot ${c.status}"></span>
+          <span class="status-text">${c.status}</span>
+        </span>
+      </td>
+      <td class="err-cell">${c.error || ""}</td>
+    `;
+    statusTableBody.appendChild(row);
+  });
+}
+
+async function pollStatus() {
+  const res = await fetch("/api/status");
+  const data = await res.json();
+  renderContacts(data.contacts);
+
+  if (data.contacts.length) {
+    statusSummary.textContent =
+      `Sent ${data.sentCount} · Failed ${data.failedCount} · Pending ${data.pendingCount}` +
+      (data.sending ? " · sending in progress" : "");
+  } else {
+    statusSummary.textContent = "No contacts uploaded yet";
+  }
+}
+
+setInterval(pollStatus, 2000);
+pollStatus();
+</script>
+</body>
+</html>

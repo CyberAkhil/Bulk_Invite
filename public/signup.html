@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign up — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+<style>
+  .auth-wrap { max-width: 380px; margin: 80px auto; padding: 0 24px; }
+  .auth-wrap .panel { padding: 28px 26px; }
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <h1 class="page-title" style="text-align:center">Bulk<span style="color:var(--accent)">Invite</span></h1>
+  <p class="page-sub" style="text-align:center; margin-left:auto; margin-right:auto;">Sign up with an invite code.</p>
+
+  <div class="panel">
+    <div class="field">
+      <label for="inviteCode">Invite code</label>
+      <input type="text" id="inviteCode" placeholder="e.g. A1B2C3D4" style="text-transform:uppercase" />
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="text" id="email" />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" />
+    </div>
+    <button class="btn btn-primary" id="signupBtn" style="width:100%">Create account</button>
+    <p class="hint" id="msg"></p>
+    <p class="hint">Already have an account? <a href="login.html">Log in</a>.</p>
+  </div>
+</div>
+
+<script>
+document.getElementById("signupBtn").addEventListener("click", async () => {
+  const inviteCode = document.getElementById("inviteCode").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("msg");
+
+  const res = await fetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ inviteCode, email, password }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    msg.textContent = data.error;
+    return;
+  }
+  location.href = "connect.html";
+});
+</script>
+</body>
+</html>

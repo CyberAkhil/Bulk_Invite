@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — Bulk Invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+<script src="authguard.js"></script>
+
+<div class="container">
+  <h1 class="page-title">Admin</h1>
+  <p class="page-sub">Generate invite codes and see who has signed up.</p>
+
+  <div class="panel" style="margin-bottom:24px">
+    <button class="btn btn-primary" id="genBtn">Generate invite code</button>
+    <p class="hint" id="genResult"></p>
+  </div>
+
+  <div class="panel" style="margin-bottom:24px">
+    <h2 class="step-title" style="margin-bottom:12px">Invite codes</h2>
+    <table id="invitesTable">
+      <thead><tr><th>Code</th><th>Status</th><th>Used by</th><th>Created</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2 class="step-title" style="margin-bottom:12px">Users</h2>
+    <table id="usersTable">
+      <thead><tr><th>Email</th><th>Joined</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function checkAdmin() {
+  const res = await fetch("/api/auth/me");
+  const data = await res.json();
+  if (!res.ok || !data.isAdmin) {
+    location.href = "connect.html";
+  }
+}
+
+async function loadInvites() {
+  const res = await fetch("/api/admin/invites");
+  if (!res.ok) return;
+  const data = await res.json();
+  const tbody = document.querySelector("#invitesTable tbody");
+  tbody.innerHTML = "";
+  data.invites.slice().reverse().forEach((i) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="mono">${i.code}</td>
+      <td>${i.used ? "Used" : "Unused"}</td>
+      <td>${i.usedByEmail || ""}</td>
+      <td>${new Date(i.createdAt).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+async function loadUsers() {
+  const res = await fetch("/api/admin/users");
+  if (!res.ok) return;
+  const data = await res.json();
+  const tbody = document.querySelector("#usersTable tbody");
+  tbody.innerHTML = "";
+  data.users.forEach((u) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${u.email}</td><td>${new Date(u.createdAt).toLocaleString()}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+document.getElementById("genBtn").addEventListener("click", async () => {
+  const res = await fetch("/api/admin/invites", { method: "POST" });
+  const data = await res.json();
+  document.getElementById("genResult").textContent = `New code: ${data.invite.code} — share this with the person you're inviting.`;
+  loadInvites();
+});
+
+checkAdmin();
+loadInvites();
+loadUsers();
+</script>
+</body>
+</html>
