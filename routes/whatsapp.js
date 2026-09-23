@@ -16,11 +16,35 @@ function newState() {
   return {
     qrDataUrl: null,
     ready: false,
+    authenticated: false,
     contacts: [], // [{ id, name, phone, status, error }]
     sending: false,
     minDelayMs: 4000, // minimum gap between sends — do NOT go much lower than this
     maxDelayMs: 6000,
   };
+}
+
+function applyConnectionState(state, eventName, payload) {
+  switch (eventName) {
+    case "qr":
+      state.qrDataUrl = payload;
+      state.ready = false;
+      state.authenticated = false;
+      break;
+    case "authenticated":
+    case "ready":
+      state.ready = true;
+      state.authenticated = true;
+      state.qrDataUrl = null;
+      break;
+    case "auth_failure":
+    case "disconnected":
+      state.ready = false;
+      state.authenticated = false;
+      break;
+    default:
+      break;
+  }
 }
 
 function getOrCreateSession(userId) {
@@ -46,19 +70,27 @@ function getOrCreateSession(userId) {
   });
 
   client.on("qr", async (qr) => {
-    state.qrDataUrl = await QRCode.toDataURL(qr);
-    state.ready = false;
+    applyConnectionState(state, "qr", await QRCode.toDataURL(qr));
     console.log(`[wa:${userId}] New QR code generated.`);
   });
 
+  client.on("authenticated", () => {
+    applyConnectionState(state, "authenticated");
+    console.log(`[wa:${userId}] Client authenticated.`);
+  });
+
   client.on("ready", () => {
-    state.ready = true;
-    state.qrDataUrl = null;
+    applyConnectionState(state, "ready");
     console.log(`[wa:${userId}] Client is ready.`);
   });
 
+  client.on("auth_failure", (msg) => {
+    applyConnectionState(state, "auth_failure");
+    console.error(`[wa:${userId}] Auth failed:`, msg);
+  });
+
   client.on("disconnected", (reason) => {
-    state.ready = false;
+    applyConnectionState(state, "disconnected");
     console.log(`[wa:${userId}] Disconnected:`, reason);
   });
 
@@ -190,4 +222,12 @@ async function startBulkSend(userId, inviteLink, messageTemplate) {
   return { started: true };
 }
 
-module.exports = { getOrCreateSession, getState, startBulkSend, resetSession, safeRemoveSessionDir };
+module.exports = {
+  getOrCreateSession,
+  getState,
+  startBulkSend,
+  resetSession,
+  safeRemoveSessionDir,
+  applyConnectionState,
+  newState,
+};
