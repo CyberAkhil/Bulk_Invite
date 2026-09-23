@@ -1,5 +1,6 @@
 const express = require("express");
 const session = require("express-session");
+const FileStore = require("session-file-store")(session);
 const multer = require("multer");
 const path = require("path");
 
@@ -14,6 +15,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use(express.json());
 app.use(
   session({
+    store: new FileStore({
+      path: path.join(__dirname, "storage", "sessions"),
+      ttl: 7 * 24 * 60 * 60,
+      retries: 5,
+      fileExtension: ".json",
+    }),
     secret: process.env.SESSION_SECRET || "change-this-secret-before-going-live",
     resave: false,
     saveUninitialized: false,
