@@ -6,6 +6,25 @@ const path = require("path");
 const SESSIONS_DIR = path.join(__dirname, "..", "storage", "sessions");
 fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
+async function pruneStaleSessionDirs() {
+  if (!fs.existsSync(SESSIONS_DIR)) return;
+
+  const entries = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const folderPath = path.join(SESSIONS_DIR, entry.name);
+    try {
+      await safeRemoveSessionDir(folderPath);
+    } catch (err) {
+      console.warn(`[wa] Failed to prune stale session dir ${folderPath}:`, err.message);
+    }
+  }
+}
+
+pruneStaleSessionDirs().catch((err) => {
+  console.warn("[wa] Stale session prune failed:", err.message);
+});
+
 // ---- Per-user WhatsApp sessions ----
 // Each signed-up user gets their own Chromium instance + WhatsApp session.
 // This is the single biggest resource cost of this app: N active users
@@ -51,6 +70,17 @@ function getOrCreateSession(userId) {
   if (sessions.has(userId)) return sessions.get(userId);
 
   const state = newState();
+  const sessionFolder = path.join(SESSIONS_DIR, `session-${userId}`);
+
+  if (fs.existsSync(sessionFolder)) {
+    try {
+      fs.rmSync(sessionFolder, { recursive: true, force: true });
+    } catch (err) {
+      if (err && (err.code === "EBUSY" || err.code === "EPERM")) {
+        console.warn(`[wa:${userId}] Detected a locked session profile; removing stale Chromium profile before reinitializing.`);
+      }
+    }
+  }
 
   const client = new Client({
     authStrategy: new LocalAuth({ clientId: userId, dataPath: SESSIONS_DIR }),
